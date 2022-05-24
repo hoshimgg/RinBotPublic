@@ -1,0 +1,7 @@
+beautifulsoup4
+lxml
+psutil
+yiri-mirai
+numpy
+apscheduler
+uvicorn
