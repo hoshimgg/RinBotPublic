@@ -1,4 +1,4 @@
-rm -rf /home/ubuntu/mcl/bots/715859163/cache
+rm -rf /home/ubuntu/mcl/bots/12345/cache
 tmux send -t mcl "stop" ENTER
 sleep 10
 tmux send -t mcl "./mcl" ENTER

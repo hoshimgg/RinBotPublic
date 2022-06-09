@@ -31,7 +31,7 @@ def get_title(soup):
     return title
 
 def get_url_brief(url):
-    if 'localhost' in url or '127.0.0.1' in url or '[::1]' in url:
+    if '//localhost' in url or '//127.' in url or '[::1]' in url:
         return '谁是孬人'
     try:
         response = requests.get(url, proxies=proxies, timeout=(3, 5), stream=True)
@@ -66,17 +66,18 @@ def get_url_brief(url):
     return '标题：' + title + '\n' + \
             '摘要：' + content[:180]
 
-def save_img(url):
-    if 'localhost' in url or '127.0.0.1' in url or '[::1]' in url:
+def save_net_img(url):
+    # print(url)
+    if '//localhost' in url or '//127.' in url or '[::1]' in url:
         return False, '谁是孬人'
     try:
         response = requests.get(url, proxies=proxies, timeout=(3, 5), stream=True)
     except requests.exceptions.ConnectionError:
         return False, '网络连接错误！'
     file_size = response.headers.get('Content-Length', 0)
-    if int(file_size) > 10*1e3*1e3: ## 10MB
+    if int(file_size) > 10*1e3*1e3:  # 10MB
         return False, '文件过大！'
-    with open('temp.jpg', 'wb') as file:
+    with open('records/temp.jpg', 'wb') as file:
         file.write(response.content)
     return True, '下载成功'
 

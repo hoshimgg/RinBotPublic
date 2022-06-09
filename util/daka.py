@@ -4,11 +4,12 @@ import time
 session = requests.Session()
 session.trust_env = False
 
-url = 'https://csu.edu.cn'
+url = 'https://'
 headers = {
     'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
 }
 cookies = {
+
 }
 payload = {
     'created': int(time.time()),

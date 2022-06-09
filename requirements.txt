@@ -5,3 +5,8 @@ yiri-mirai
 numpy
 apscheduler
 uvicorn
+opencv-python
+numpy
+requests
+opencv-python
+matplotlib

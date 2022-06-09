@@ -1,14 +1,16 @@
-import json
 import random
-import requests
 import traceback
-import numpy as np  # 这行不能删
-from config import bot
-from mirai import At, GroupMessage, Startup, Image
+from tokenize import group
 from urllib.parse import urlencode
-from requests.exceptions import SSLError
-from util import *
+
+import numpy as np  # 这行不能删
+import requests
+from mirai import At, GroupMessage, Image, Shutdown, Startup
+
 from business import *
+from config import bot
+from schedule import scheduler
+from util import *
 
 session = requests.Session()
 proxies = {
@@ -16,9 +18,11 @@ proxies = {
     'https': 'https://localhost:7890/',
 }
 
+
 def hello(event, msg):
     if msg == '您好':
         return bot.send(event, 'Hello, World!')
+
 
 async def pixiv_image(event, msg):
     if msg == '来点二次元' or msg == '来张二次元':
@@ -30,7 +34,8 @@ async def pixiv_image(event, msg):
             'format': 'json',
             'mode': 3
         }
-        pixiv_response = session.get(pixiv_url, params=pixiv_params, verify=False)
+        pixiv_response = session.get(
+            pixiv_url, params=pixiv_params, verify=False)
         if pixiv_response.status_code != 200:
             await bot.send(f'出现网络问题：<{pixiv_response.status_code}>\n{pixiv_response.text}\n请访问{pixiv_url}查看')
         pixiv_response = pixiv_response.json()
@@ -41,6 +46,7 @@ async def pixiv_image(event, msg):
             file.write(img_data.content)
         await bot.send(event, Image(path='setu.jpg'))
 
+
 async def erciyuan(bot, event, msg):
     if msg == '来点二次元' or msg == '来张二次元':
         url = 'http://iw233.cn/api/Random.php'
@@ -49,35 +55,42 @@ async def erciyuan(bot, event, msg):
             file.write(response.content)
         await bot.send(event, Image(path='setu.jpg'))
 
+
 def web_summary(event, msg: str):
     msg = streamline(msg)
     if msg.startswith('http'):
         return bot.send(event, get_url_brief(msg))
 
+
 def calc(event, method, payload: str):
     if method == 'calc':
         group_id = event.sender.group.id
         qq_id = event.sender.id
-        can_read, can_write, msg = auth(group_id, qq_id)
+        can_read, can_write, who, msg = auth(group_id, qq_id)
         if not can_write:
             return bot.send(event, msg)
         payload = payload.replace('（', '(').replace('）', ')')
         result = eval(pre_process(payload))
         return bot.send(event, str(result))
 
+
 def help(event, method, _):
+    if method != 'help':
+        return None
     group_id = event.sender.group.id
-    if method == 'help':
-        if group_id in ALLOW_ALL:
-            with open('help/help.txt') as f:
-                help_msg = f.read()
-        elif group_id in NAOREN:
-            with open('help/help_kxy.txt') as f:
-                help_msg = f.read()
-        else:
-            with open('help/help_out.txt') as f:
-                help_msg = f.read()
-        return bot.send(event, help_msg)
+    qq_id = event.sender.id
+    can_read, can_write, who, msg = auth(group_id, qq_id)
+    help_msg = f'欢迎使用星空凛的机器人！\n您的身份为：{who}，可使用如下功能：\n'
+    for msg in HELP_BASE:
+        help_msg += msg + '\n'
+    if can_read:
+        for msg in HELP_READ:
+            help_msg += msg + '\n'
+    if can_write:
+        for msg in HELP_WRITE:
+            help_msg += msg + '\n'
+    return bot.send(event, help_msg)
+
 
 def daka(event, method, _):
     if method == 'daka':
@@ -87,27 +100,31 @@ def daka(event, method, _):
         else:
             return bot.send(event, f'打卡失败！\nstatus_code：{status_code}\nresponse：{str(result)}')
 
+
 def subscribe(event, method, _):
     if method == '订阅':
         group_id = event.sender.group.id
         if group_id in NAOREN:
             return bot.send(event, '下面有请松原花音，当然也有可能她死了')
 
+
 def command_handler(event, msg):
     if msg[0] == '/':
         msg_list = msg[1:].split(' ', 1)
         method = msg_list[0]
         payload = msg_list[1] if len(msg_list) == 2 else None
-        funcs = [calc, save_fuck_new, fuck_handler, fuck_list, help, daka, subscribe]
+        funcs = [calc, save_fuck_qq, fuck_handler,
+                 fuck_list, help, daka, subscribe, pre_save_img]
         for func in funcs:
             result = func(event, method, payload)
             if result:
                 return result
         return bot.send(event, '指令错误！请发送/help查看可用指令')
 
+
 def baidu(event, msg: str):
     ask_msg = None
-    end_char = ['是啥', '是谁', '是什么']
+    end_char = ['是啥', '是谁', '是什么', '啥意思']
     start_char = ['啥是', '啥叫', '什么是', '啥事', '为什么']
     for char in end_char:
         if msg.endswith(char):
@@ -126,13 +143,15 @@ def baidu(event, msg: str):
         search_url = f'可能百度：https://www.baidu.com/s?{urlencode(param)}'
         return bot.send(event, search_url)
 
+
 def go_along(event, msg):
     bzd = ['bzd', '不知道'], '那您真bgj'
     yg = ['yg', '也管'], '你啥都管'
     bgj = ['bgj', '不管经', '不管斤'], 'bgj'
     wdl = ['wdl', '无敌了', 'tql', '太强了', '太nm强了', 'lb'], 'qs'
     question_mark = ['?', '？'], '？'
-    kaibai = ['算了', '就这样吧', '开摆', '躺平了', '我不想努力了', '野熊', '野熊吧', '懒得改了', '可是懒', '懒呗', '懒', '摆烂'], '开摆！'
+    kaibai = ['算了', '就这样吧', '开摆', '躺平了', '我不想努力了', '野熊',
+              '野熊吧', '懒得改了', '可是懒', '懒呗', '懒', '摆烂'], '开摆！'
     exclamation_mark = ['!', '！'], msg
     go_along_list = [bzd, yg, bgj, wdl, question_mark, kaibai]
     if random.random() < 1/4:
@@ -142,57 +161,73 @@ def go_along(event, msg):
     if msg[-1] in exclamation_mark[0]:
         return bot.send(event, exclamation_mark[1])
 
+
 def exchange_rate(event, msg):
     if msg == '查汇率':
         _, rate = get_rate_text()
         return bot.send(event, rate)
 
+
 async def bilibili(bot, event, msg: str):
-    if msg.startswith('BV') or msg.startswith('bv'):
+    if msg.startswith('BV') or msg.startswith('bv') or msg.startswith('av'):
         url = f'https://www.bilibili.com/video/{msg}'
         await bot.send(event, url)
         await bot.send(event, get_url_brief(url))
+
 
 def message_handler(event, msg):
     # print('in method: message_handler')
     if len(streamline(msg)) < 1:
         return
-    methods = [hello, web_summary, command_handler, baidu, go_along, exchange_rate, fuck_detect]
+    methods = [hello, web_summary, command_handler,
+               baidu, go_along, exchange_rate, fuck_detect]
     for method in methods:
         result = method(event, msg)
         if result:
             return result
 
+
 async def send_img(bot, event, msg):
     if msg.startswith('发图'):
-        success, save_msg = save_img(msg[2:].strip())
+        success, save_msg = save_net_img(msg[2:].strip())
         if success:
             await bot.send(event, Image(path='temp.jpg'))
         else:
             await bot.send(event, save_msg)
+
 
 async def asynchronous_handler(event, msg):
     # print('in method: asynchronous_handler')
     if len(streamline(msg)) < 1:
         return
     methods = [setu, setu_cache, erciyuan, send_img, setu_send_all, bilibili]
+    # methods = [setu_cache, erciyuan, send_img, bilibili]  # 不可以色色！
     for method in methods:
         # print('bot in qq', bot)
         await method(bot, event, msg)
+
 
 @bot.on(GroupMessage)
 async def on_group_message(event: GroupMessage):
     msg_chain_code = event.message_chain.as_mirai_code()
     print(msg_chain_code)
     msg = str(event.message_chain)
+    group_id = event.sender.group.id
     try:
+        # print("FUCK_IMG['is_saving']", FUCK_IMG['is_saving'])
+        if FUCK_IMG['is_saving'] and group_id == FUCK_IMG['group_id']:
+            print('准备接收图片')
+            await save_img(event)
+            return
         return message_handler(event, msg)
     except Exception as e:
         traceback.print_exc()
         return bot.send(event, '内部错误：' + repr(e))
 
+
 @bot.on(GroupMessage)
 async def on_asynchronous_message(event: GroupMessage):
+    # print('on_asynchronous_message')
     msg = str(event.message_chain)
     try:
         await asynchronous_handler(event, msg)
@@ -200,9 +235,21 @@ async def on_asynchronous_message(event: GroupMessage):
         traceback.print_exc()
         return bot.send(event, '内部错误：' + repr(e))
 
+
 @bot.on(Startup)
 async def startup(_):
-    await bot.send_group_message(TEST_ID, '哈哈 俺启动辣！')
+    await bot.send_group_message(TEST, '哈哈 俺启动辣！')
+
+
+@bot.on(Startup)
+def start_scheduler(_):
+    scheduler.start()  # 启动定时器
+
+
+@bot.on(Shutdown)
+def stop_scheduler(_):
+    scheduler.shutdown(True)  # 结束定时器
+
 
 if __name__ == '__main__':
     bot.run()

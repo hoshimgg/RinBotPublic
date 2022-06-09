@@ -1,4 +1,7 @@
+/__pycache__/
+/business/__pycache__/
 /setu/
 /records/exchange_rate.json
 /records/setu_record.json
 /records/fuck_record.json
+/util/__pycache__/

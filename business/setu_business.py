@@ -17,7 +17,7 @@ async def setu_cache(bot, event, msg):
             setu_name = 'setu' + str(i) + '.jpg'
             if setu_name not in local_setu:
                 try:
-                    success, status_code, text = down_setu(setu_name=setu_name, setu_path=setu_path)
+                    success, status_code, text = down_setu(setu_name, setu_path)
                 except SSLError:
                     await bot.send(event, '色图站挂了，缓存失败')
                     return
@@ -32,6 +32,8 @@ async def setu(bot, event, msg):
     setu_trigger = [st1 + st2 for st1 in setu_trigger_1 for st2 in setu_trigger_2]
     if msg not in setu_trigger:
         return
+    # await bot.send(event, '不可以色色！')
+    # return
     group_id = event.sender.group.id
     user_id = str(event.sender.id)
     if group_id in ALLOW_ALL:
@@ -49,8 +51,8 @@ async def setu(bot, event, msg):
         message_chain=[]
         message_chain.append(Image(path='./setu/'+local_setu[0]))
         message_chain.append("剩余缓存" + str(len(local_setu) - 1) + "张色图")
-        if event.sender.group.id == RTS_ID:
-            # message_chain.append(At(target=1913603067))
+        if event.sender.group.id == RTS:
+            # message_chain.append(At(target=12345))
             message_chain.append('，您已看过' + str(count) + '张色图')
             message_chain.append('，先生快来看色图')
         await bot.send(event, message_chain)
@@ -70,6 +72,8 @@ async def setu(bot, event, msg):
 async def setu_send_all(bot, event, msg):
     if msg != '我要色色':
         return
+    # await bot.send(event, '不可以色色！')
+    # return
     group_id = event.sender.group.id
     user_id = str(event.sender.id)
     local_setu = os.listdir('./setu')
@@ -91,9 +95,15 @@ async def setu_send_all(bot, event, msg):
                     return
         await bot.send(event, '色图缓存完成')
     local_setu = os.listdir('./setu')
+    cur_setu_id =0
     for setu_name in local_setu:
-        await bot.send(event, Image(path='./setu/'+setu_name))
+        message_chain=[]
+        message_chain.append(Image(path='./setu/'+setu_name))
+        message_chain.append(str(cur_setu_id))
+        await bot.send(event, message_chain)
         os.remove('./setu/'+setu_name)
+        cur_setu_id += 1
+        time.sleep(1)
     if group_id in ALLOW_ALL:
         with open("records/setu_record.json", "r", encoding='utf-8') as f:
             setu_record = json.loads(f.read())
@@ -104,6 +114,6 @@ async def setu_send_all(bot, event, msg):
         setu_record[user_id] = count
         with open('records/setu_record.json', 'w', encoding='utf-8') as f:
             f.write(pretty_json(setu_record))
-    if event.sender.group.id == RTS_ID:
-        # message_chain.append(At(target=【先生qq号】]))
+    if event.sender.group.id == RTS:
+        # message_chain.append(At(target=12345))
         await bot.send(event, ('已输出所有缓存色图，您已看过' + str(count) + '张色图，先生快来看色图'))

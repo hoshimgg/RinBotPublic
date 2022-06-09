@@ -1,5 +1,10 @@
+import cv2
+import numpy as np
 import requests
 import json
+
+from PIL import Image as PILImage
+from PIL import ImageFont, ImageDraw
 
 session = requests.Session()
 proxies = {
@@ -27,6 +32,15 @@ def down_setu(setu_path: str, setu_name: str):
         return False, img_data.status_code, img_data.text
     with open(setu_path + setu_name, 'wb') as file:
         file.write(img_data.content)
+    img = cv2.imread(setu_path + setu_name)
+    font_path = "assets/font/simsun.ttc"
+    font = ImageFont.truetype(font_path, 10)
+    img_pil = PILImage.fromarray(img)
+    draw = ImageDraw.Draw(img_pil)
+    draw.text((0, 0), '@小泉花阳', (0, 0, 0), font=font, stroke_width=2, stroke_fill=(255, 255, 255))
+    # noinspection PyTypeChecker
+    img = np.array(img_pil)
+    cv2.imwrite(setu_path + setu_name, img)
     return True, None, None
 
 def gen_compare(cur, pre):
